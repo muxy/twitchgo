@@ -14,6 +14,7 @@ const helixBaseUrl = "https://api.twitch.tv/helix"
 type TwitchClient struct {
 	HttpClient *http.Client
 	ClientID   string
+	Token      string
 }
 
 type RequestOptions struct {
@@ -26,10 +27,11 @@ type RequestOptions struct {
 	Extra     *url.Values
 }
 
-func NewTwitchClient(clientID string) TwitchClient {
+func NewTwitchClient(clientID string, token string) TwitchClient {
 	return TwitchClient{
 		HttpClient: &http.Client{},
 		ClientID:   clientID,
+		Token:      token,
 	}
 }
 
@@ -47,6 +49,7 @@ func (client *TwitchClient) getRequest(endpoint string, options *RequestOptions,
 	if options != nil {
 		if options.Version == "helix" {
 			targetUrl = helixBaseUrl + endpoint
+			targetVersion = "5"
 		}
 
 		v := url.Values{}
@@ -91,6 +94,7 @@ func (client *TwitchClient) getRequest(endpoint string, options *RequestOptions,
 	req, _ := http.NewRequest("GET", targetUrl, nil)
 	req.Header.Set("Accept", fmt.Sprintf("application/vnd.twitchtv.v%s+json", targetVersion))
 	req.Header.Set("Client-ID", client.ClientID)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", client.Token))
 	res, err := client.HttpClient.Do(req)
 	if err != nil {
 		return err

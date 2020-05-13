@@ -1,7 +1,7 @@
 package twitch
 
 import (
-	"fmt"
+    "fmt"
 	"net/url"
 	"time"
 )
@@ -51,6 +51,7 @@ func (client *TwitchClient) GetFollowersForID(userID string, options *RequestOpt
 	if options == nil {
 		options = &RequestOptions{}
 	}
+
 	options.Version = "helix"
 
 	if options.Extra == nil {
