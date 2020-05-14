@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 )
@@ -14,7 +15,10 @@ const helixBaseUrl = "https://api.twitch.tv/helix"
 type TwitchClient struct {
 	HttpClient *http.Client
 	ClientID   string
+	Token      string
 }
+
+type TwitchClientOption func(*TwitchClient)
 
 type RequestOptions struct {
 	Limit     int64  `url:"limit"`
@@ -26,18 +30,43 @@ type RequestOptions struct {
 	Extra     *url.Values
 }
 
-func NewTwitchClient(clientID string) TwitchClient {
-	return TwitchClient{
-		HttpClient: &http.Client{},
-		ClientID:   clientID,
+/* TwitchClient options */
+func WithClientID(clientID string) TwitchClientOption {
+	return func(cl *TwitchClient) {
+		cl.ClientID = clientID
 	}
 }
 
-func NewTwitchClientWithHTTPClient(clientID string, httpClient *http.Client) TwitchClient {
-	return TwitchClient{
-		HttpClient: httpClient,
-		ClientID:   clientID,
+func WithHTTPClient(httpClient *http.Client) TwitchClientOption {
+	return func(cl *TwitchClient) {
+		cl.HttpClient = httpClient
 	}
+}
+
+func WithBearerToken(token string) TwitchClientOption {
+	return func(cl *TwitchClient) {
+		cl.Token = token
+	}
+}
+
+func NewTwitchClient(opts ...TwitchClientOption) *TwitchClient {
+	var (
+		defaultClient = &http.Client{}
+		defaultID     = ""
+		defaultToken  = ""
+	)
+
+	cl := &TwitchClient{
+		HttpClient: defaultClient,
+		ClientID:   defaultID,
+		Token:      defaultToken,
+	}
+
+	for _, opt := range opts {
+		opt(cl)
+	}
+
+	return cl
 }
 
 func (client *TwitchClient) getRequest(endpoint string, options *RequestOptions, out interface{}) error {
@@ -47,6 +76,7 @@ func (client *TwitchClient) getRequest(endpoint string, options *RequestOptions,
 	if options != nil {
 		if options.Version == "helix" {
 			targetUrl = helixBaseUrl + endpoint
+			targetVersion = "5"
 		}
 
 		v := url.Values{}
@@ -71,10 +101,6 @@ func (client *TwitchClient) getRequest(endpoint string, options *RequestOptions,
 			v.Add("channel", options.Channel)
 		}
 
-		if options.Version != "" {
-			targetVersion = options.Version
-		}
-
 		if len(v) != 0 {
 			targetUrl += "?" + v.Encode()
 		}
@@ -83,7 +109,7 @@ func (client *TwitchClient) getRequest(endpoint string, options *RequestOptions,
 			if len(v) != 0 {
 				targetUrl += "&" + options.Extra.Encode()
 			} else {
-			targetUrl += "?" + options.Extra.Encode()
+				targetUrl += "?" + options.Extra.Encode()
 			}
 		}
 	}
@@ -91,10 +117,16 @@ func (client *TwitchClient) getRequest(endpoint string, options *RequestOptions,
 	req, _ := http.NewRequest("GET", targetUrl, nil)
 	req.Header.Set("Accept", fmt.Sprintf("application/vnd.twitchtv.v%s+json", targetVersion))
 	req.Header.Set("Client-ID", client.ClientID)
+
+	if len(client.Token) > 0 {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", client.Token))
+	}
+
 	res, err := client.HttpClient.Do(req)
 	if err != nil {
 		return err
 	}
+
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
