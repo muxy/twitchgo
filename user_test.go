@@ -9,7 +9,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/ddrboxman/twitchgo"
+	"github.com/muxy/twitchgo"
 )
 
 // RewriteTransport is an http.RoundTripper that rewrites requests
