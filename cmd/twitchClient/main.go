@@ -14,7 +14,7 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/ddrboxman/twitchgo"
+	"github.com/muxy/twitchgo"
 	"github.com/k0kubun/pp"
 
 	"github.com/motemen/go-loghttp"
